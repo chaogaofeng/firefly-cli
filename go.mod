@@ -21,6 +21,8 @@ go 1.16
 require (
 	github.com/briandowns/spinner v1.12.0
 	github.com/btcsuite/btcd v0.22.1
+	github.com/cosmos/cosmos-sdk v0.45.3
+	github.com/cosmos/go-bip39 v1.0.0
 	github.com/google/go-containerregistry v0.8.0
 	github.com/hyperledger/firefly-common v1.1.2
 	github.com/hyperledger/firefly-signer v0.9.6
@@ -28,10 +30,13 @@ require (
 	github.com/miracl/conflate v1.2.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/viper v1.12.1-0.20220712161005-5247643f0235
 	github.com/stretchr/testify v1.8.0
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
+	github.com/tharsis/ethermint v0.14.1
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1

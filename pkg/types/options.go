@@ -92,6 +92,7 @@ const BlockchainNodeProvider = "blockchain_node_provider"
 var (
 	BlockchainNodeProviderGeth      = fftypes.FFEnumValue(BlockchainNodeProvider, "geth")
 	BlockchainNodeProviderBesu      = fftypes.FFEnumValue(BlockchainNodeProvider, "besu")
+	BlockchainNodeProviderGnc       = fftypes.FFEnumValue(BlockchainNodeProvider, "gnchain")
 	BlockchainNodeProviderRemoteRPC = fftypes.FFEnumValue(BlockchainNodeProvider, "remote-rpc")
 )
 

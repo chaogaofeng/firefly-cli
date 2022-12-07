@@ -33,6 +33,7 @@ import (
 	"github.com/hyperledger/firefly-cli/internal/blockchain"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum/besu"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum/geth"
+	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum/gnc"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum/remoterpc"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/fabric"
 	"github.com/hyperledger/firefly-cli/internal/constants"
@@ -1126,6 +1127,11 @@ func (s *StackManager) getBlockchainProvider() blockchain.IBlockchainProvider {
 		s.Stack.BlockchainNodeProvider = types.BlockchainNodeProviderBesu
 	}
 
+	if s.Stack.BlockchainProvider.Equals(types.BlockchainNodeProviderGnc) {
+		s.Stack.BlockchainProvider = types.BlockchainProviderEthereum
+		s.Stack.BlockchainNodeProvider = types.BlockchainNodeProviderGnc
+	}
+
 	// Fallbacks for old stacks that don't have a specific blockchain connector set
 	if s.Stack.BlockchainConnector == "" {
 		switch s.Stack.BlockchainProvider {
@@ -1147,6 +1153,8 @@ func (s *StackManager) getBlockchainProvider() blockchain.IBlockchainProvider {
 			return geth.NewGethProvider(s.ctx, s.Stack)
 		case types.BlockchainNodeProviderBesu:
 			return besu.NewBesuProvider(s.ctx, s.Stack)
+		case types.BlockchainNodeProviderGnc:
+			return gnc.NewGncProvider(s.ctx, s.Stack)
 		case types.BlockchainNodeProviderRemoteRPC:
 			s.Stack.DisableTokenFactories = true
 			return remoterpc.NewRemoteRPCProvider(s.ctx, s.Stack)
