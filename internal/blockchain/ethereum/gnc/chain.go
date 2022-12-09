@@ -7,18 +7,18 @@ accounts:
     coin_type: 118
     algo: sm2
     # address: gnc1qxcrws5mytpzwkk4tn4dyysw2ru96na3kvhk65
-    coins: ["99999000000ugnc"]
+    coins: ["10000000000000000000000000gnc"]
     roles: ["ROOT_ADMIN"]
   - name: validator1
     mnemonic: "gossip wheel net riot retreat arrest ozone dragon funny undo bulb visa victory label slim domain network wage suit peanut tattoo text venture answer"
     coin_type: 118
     algo: sm2
     # address: gnc13d59wpwv6swsn8z5xwk4vr2n67q20sps9zzefd
-    coins: ["10000000ugnc"]
+    coins: ["10000000000000000000gnc"]
 {VAR_ACCOUNTS}
 validators:
   - name: validator1
-    sef_delegation: "10000000ugnc"
+    sef_delegation: "10000000000000000000gnc"
     commission_rate:
     commission_max_rate:
     commission_max_change_rate:
@@ -41,7 +41,7 @@ init:
       enabled-unsafe-cors: true
     json-rpc:
       api: "eth,net,web3,txpool,debug,personal"
-    minimum-gas-prices: "0ugnc"
+    minimum-gas-prices: "0gnc"
   client:
 genesis:
   genesis_time: 2022-04-12T05:35:29Z
@@ -55,39 +55,37 @@ genesis:
         enabled: false
     evm:
       params:
-        evm_denom: "ugnc"
+        evm_denom: "gnc"
     feemarket:
       params:
         no_base_fee: true
     bank:
       denom_metadata:
         - description: "base denom of gnc block chain"
-          base: "ugnc"
+          base: "gnc"
           display: "gnc"
           denom_units:
-            - denom: ugnc
-              exponent: 0
             - denom: gnc
-              exponent: 6
+              exponent: 0
           name: "gnc network"
           symbol: "GNC"
     crisis:
       constant_fee:
-        denom: ugnc
+        denom: gnc
     staking:
       params:
-        bond_denom: ugnc
+        bond_denom: gnc
         unbonding_time: 10s
     gov:
       deposit_params:
         min_deposit:
-          - denom: ugnc
+          - denom: gnc
             amount: "10000000"
     mint:
       minter:
         inflation: "0.000000000000000000"
       params:
-        mint_denom: ugnc
+        mint_denom: gnc
         inflation_rate_change: "0.000000000000000000"
         inflation_min: "0.000000000000000000"
 `

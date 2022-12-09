@@ -80,12 +80,15 @@ func (p *GncProvider) WriteConfig(options *types.InitOptions) error {
 
 	// Create chain.yml
 	addresses := ""
-	for _, member := range p.stack.Members {
+	for i, member := range p.stack.Members {
 		address := member.Account.(*ethereum.Account).Address
 		// Drop the 0x on the front of the address here because that's what geth is expecting in the genesis.json
+		if i != 0 {
+			addresses += "\n"
+		}
 		addresses += fmt.Sprintf(`  - address: %s
     roles: ["ROOT_ADMIN"]
-    coins: ["10000000000ugnc"]`, bench32Address(address))
+    coins: ["10000000000000000000gnc"]`, bench32Address(address))
 	}
 	blockPeriod := fmt.Sprintf("%ds", options.BlockPeriod)
 	chainID := fmt.Sprintf("gnchain_45-%d", options.ChainID)
