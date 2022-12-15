@@ -53,7 +53,7 @@ func GetManifestForReleaseChannel(releaseChannel fftypes.FFEnum) (*types.Version
 	if manifest.FireFly == nil {
 		// Fill in the FireFly version number
 		manifest.FireFly = &types.ManifestEntry{
-			Image: "ghcr.io/hyperledger/firefly",
+			Image: constants.FireFlyCoreImageName,
 			SHA:   imageDigest[7:],
 		}
 	}
@@ -80,7 +80,7 @@ func ReadManifestFile(p string) (*types.VersionManifest, error) {
 	// If core is not specified in the manifest, use a locally built image called "firefly"
 	if manifest.FireFly == nil {
 		manifest.FireFly = &types.ManifestEntry{
-			Image: "hyperledger/firefly",
+			Image: constants.FireFlyCoreImageName,
 			Local: true,
 		}
 	}

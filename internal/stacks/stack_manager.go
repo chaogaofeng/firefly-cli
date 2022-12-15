@@ -292,7 +292,7 @@ func (s *StackManager) LoadStack(stackName string) error {
 	if s.Stack.VersionManifest == nil {
 		s.Stack.VersionManifest = &types.VersionManifest{
 			FireFly: &types.ManifestEntry{
-				Image: "ghcr.io/hyperledger/firefly",
+				Image: constants.FireFlyCoreImageName,
 				Tag:   "latest",
 			},
 			Ethconnect: &types.ManifestEntry{
