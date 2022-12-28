@@ -62,6 +62,8 @@ type InitOptions struct {
 	MSPPaths                 []string
 	ChannelName              string
 	ChaincodeName            string
+	MPCTypes                 []string
+	IP                       string
 }
 
 const IPFSMode = "ipfs_mode"

@@ -18,6 +18,7 @@ package docker
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 
 	"github.com/hyperledger/firefly-cli/internal/constants"
@@ -170,6 +171,60 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 					"FF_ENDPOINT": fmt.Sprintf("http://firefly_core_%d:%d", *member.Index, member.ExposedFireflyPort),
 				},
 			}
+		}
+		// mpc
+		{
+			compose.Services["mysql_"+member.ID] = &Service{
+				Image:         constants.MysqlImageName,
+				ContainerName: fmt.Sprintf("%s_mysql_%s", s.Name, member.ID),
+				Ports:         []string{fmt.Sprintf("%d:3306", member.ExposedMysqlPort)},
+				Environment: map[string]interface{}{
+					"MYSQL_ROOT_PASSWORD": "root",
+					"MYSQL_DATABASE":      "GMPC_DB",
+				},
+				Volumes: []string{fmt.Sprintf("mysql_%s:/var/lib/mysql", member.ID)},
+				Logging: StandardLogOptions,
+			}
+			compose.Volumes[fmt.Sprintf("mysql_%s", member.ID)] = struct{}{}
+
+			compose.Services["mysql_"+member.ID] = &Service{
+				Image:         constants.MysqlImageName,
+				ContainerName: fmt.Sprintf("%s_mysql_%s", s.Name, member.ID),
+				Ports:         []string{fmt.Sprintf("%d:3306", member.ExposedMysqlPort)},
+				Environment: map[string]interface{}{
+					"MYSQL_ROOT_PASSWORD": "root",
+					"MYSQL_DATABASE":      "GMPC_DB",
+				},
+				Volumes: []string{
+					// TODO
+					fmt.Sprintf("%s:/docker-entrypoint-initdb.d/GMPC_DB.sql", path.Join(s.RuntimeDir, "config", "GMPC_DB.sql")),
+					fmt.Sprintf("mysql_%s:/var/lib/mysql", member.ID),
+				},
+				Logging: StandardLogOptions,
+			}
+			compose.Volumes[fmt.Sprintf("mysql_%s", member.ID)] = struct{}{}
+
+			var ports []string
+			ports = append(ports, fmt.Sprintf("%d:%d", member.ExposedMPCGWPort, member.ExposedMPCGWPort))
+			ports = append(ports, fmt.Sprintf("%d:%d", member.ExposedMPCWSPort, member.ExposedMPCWSPort))
+			for _, port := range member.ExposedMPCPorts {
+				ports = append(ports, fmt.Sprintf("%d:%d", port, port))
+			}
+
+			compose.Services["mpc_"+member.ID] = &Service{
+				Image:         s.VersionManifest.MPC.GetDockerImageString(),
+				ContainerName: fmt.Sprintf("%s_mpc_%s", s.Name, member.ID),
+				Ports:         ports,
+				DependsOn: map[string]map[string]string{
+					fmt.Sprintf("mysql_%s", member.ID):        {"condition": "service_started"},
+					fmt.Sprintf("firefly_core_%s", member.ID): {"condition": "service_started"},
+				},
+				// TODO
+				//Volumes: []string{fmt.Sprintf("mpc_%s:/usr/src/MP-SPDZ/config.py", member.ID)},
+				Volumes: []string{fmt.Sprintf("%s:/usr/src/MP-SPDZ/config.py", path.Join(s.RuntimeDir, "config", fmt.Sprintf("mpc_%s.py", member.ID)))},
+				Logging: StandardLogOptions,
+			}
+			compose.Volumes[fmt.Sprintf("mpc_%s", member.ID)] = struct{}{}
 		}
 	}
 

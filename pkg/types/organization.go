@@ -32,6 +32,10 @@ type Organization struct {
 	ExposedUIPort               int          `json:"exposedUiPort,omitempty"`
 	ExposedSandboxPort          int          `json:"exposedSandboxPort,omitempty"`
 	ExposedTokensPorts          []int        `json:"exposedTokensPorts,omitempty"`
+	ExposedMysqlPort            int          `json:"exposedMysqlPort,omitempty"`
+	ExposedMPCGWPort            int          `json:"exposedMPCGWPort,omitempty"`
+	ExposedMPCWSPort            int          `json:"exposedMPCWSPort,omitempty"`
+	ExposedMPCPorts             []int        `json:"exposedMPCPorts,omitempty"`
 	External                    bool         `json:"external,omitempty"`
 	OrgName                     string       `json:"orgName,omitempty"`
 	NodeName                    string       `json:"nodeName,omitempty"`

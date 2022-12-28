@@ -296,23 +296,27 @@ func (s *StackManager) LoadStack(stackName string) error {
 				Tag:   "latest",
 			},
 			Ethconnect: &types.ManifestEntry{
-				Image: "ghcr.io/hyperledger/firefly-ethconnect",
+				Image: "glodnet/gdc-ethconnect",
 				Tag:   "latest",
 			},
 			Fabconnect: &types.ManifestEntry{
-				Image: "ghcr.io/hyperledger/firefly-fabconnect",
+				Image: "glodnet/gdc-fabconnect",
 				Tag:   "latest",
 			},
 			DataExchange: &types.ManifestEntry{
-				Image: "ghcr.io/hyperledger/firefly-dataexchange-https",
+				Image: "glodnet/gdc-dataexchange-https",
 				Tag:   "latest",
 			},
 			TokensERC1155: &types.ManifestEntry{
-				Image: "ghcr.io/hyperledger/firefly-tokens-erc1155",
+				Image: "glodnet/gdc-tokens-erc1155",
 				Tag:   "latest",
 			},
 			TokensERC20ERC721: &types.ManifestEntry{
-				Image: "ghcr.io/hyperledger/firefly-tokens-erc20-erc721",
+				Image: "glodnet/gdc-tokens-erc20-erc721",
+				Tag:   "latest",
+			},
+			MPC: &types.ManifestEntry{
+				Image: "glodnet/gdc-mpc",
 				Tag:   "latest",
 			},
 		}
@@ -321,7 +325,7 @@ func (s *StackManager) LoadStack(stackName string) error {
 	// If signer is not specified in the manifest, use the previously hardcoded default
 	if s.Stack.VersionManifest.Signer == nil {
 		s.Stack.VersionManifest.Signer = &types.ManifestEntry{
-			Image: "ghcr.io/hyperledger/firefly-signer",
+			Image: "glodnet/gdc-signer",
 			Tag:   "v0.9.6",
 		}
 	}
@@ -430,6 +434,10 @@ func (s *StackManager) writeConfig(options *types.InitOptions) error {
 		return err
 	}
 
+	if err := s.writeMPCConfig(options); err != nil {
+		return err
+	}
+
 	for _, member := range s.Stack.Members {
 		config := core.NewFireflyConfig(s.Stack, member)
 
@@ -504,6 +512,79 @@ func (s *StackManager) writeDataExchangeCerts() error {
 	return nil
 }
 
+func (s *StackManager) writeMPCConfig(options *types.InitOptions) error {
+	ipFunc := func() string {
+		conn, err := net.Dial("udp", "8.8.8.8:53")
+		if err != nil {
+			panic(err)
+		}
+		localAddr := conn.LocalAddr().(*net.UDPAddr)
+		// 192.168.1.20:61085
+		ip := strings.Split(localAddr.String(), ":")[0]
+		return ip
+	}
+	if len(options.IP) == 0 {
+		options.IP = ipFunc()
+	}
+	for i, member := range s.Stack.Members {
+		configFilename := filepath.Join(s.Stack.InitDir, "config", fmt.Sprintf("mpc_%s.py", member.ID))
+
+		configTemplate := `
+#CONFIG
+
+# block chain regis node api info
+BCAPI_REGISNODE_URL = 'http://%s:5000/api/v1/dai/RegisterMPCNode'
+
+# database configuration
+DB_HOST = '%s'
+DB_PORT = 3306
+DB_USER = 'root'
+DB_PASS = 'root'
+DB_DATABASENAME = 'GMPC_DB'
+DB_CHARSET = 'utf8mb4'
+
+# websocket ip & port
+WS_BROADCAST_IP = '0.0.0.0'
+WS_BROADCAST_PORT = %d
+WS_BROADCAST_FLAG = 3
+
+# node info
+NODE_UUID = '%s'
+NODE_NAME = '%s'
+NODE_TAG = '%stag'
+NODE_TYPE = %s
+NODE_ADDRESS = ''
+NODE_APIADDRESS = '0.0.0.0'
+NODE_APIPORT = %d
+NODE_MPCADDRESS = '%s'
+NODE_MPCPORT = '%d-%d'
+		`
+		config := fmt.Sprintf(configTemplate,
+			fmt.Sprintf("firefly_core_%s", member.ID),
+			fmt.Sprintf("mysql_%s", member.ID),
+			member.ExposedMPCWSPort,
+			fftypes.NewUUID(),
+			member.NodeName,
+			member.NodeName,
+			options.MPCTypes[i],
+			member.ExposedMPCGWPort,
+			options.IP,
+			member.ExposedMPCPorts[0],
+			member.ExposedMPCPorts[len(member.ExposedMPCPorts)-1],
+		)
+
+		if err := ioutil.WriteFile(configFilename, []byte(config), 0755); err != nil {
+			return err
+		}
+	}
+
+	initSql := "/*\n Navicat Premium Data Transfer\n\n Source Server         : GMPC-MYSQL\n Source Server Type    : MySQL\n Source Server Version : 80031\n Source Host           : 10.1.120.48:12345\n Source Schema         : GMPC_DB\n\n Target Server Type    : MySQL\n Target Server Version : 80031\n File Encoding         : 65001\n\n Date: 26/12/2022 15:54:13\n*/\n\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n-- ----------------------------\n-- Table structure for GMPC_NODE\n-- ----------------------------\nDROP TABLE IF EXISTS `GMPC_NODE`;\nCREATE TABLE `GMPC_NODE` (\n  `nodeId` int NOT NULL AUTO_INCREMENT COMMENT '节点iD',\n  `nodeName` varchar(40) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '节点名称',\n  `nodeTag` varchar(40) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '节点标识',\n  `nodeType` int DEFAULT NULL COMMENT '节点类型',\n  `nodeAddress` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '节点身份地址',\n  `nodeURL` varchar(255) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '节点地址',\n  `nodeRole` int DEFAULT NULL COMMENT '节点角色  1-数据方 2计算方 3数据&计算方',\n  `nodeStatus` int DEFAULT NULL COMMENT '节点状态',\n  `nodeUUID` varchar(100) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '节点UUID',\n  `createTime` datetime DEFAULT NULL COMMENT '创建时间',\n  `updateTime` datetime DEFAULT NULL COMMENT '更新时间',\n  `nodeMPC` varchar(255) COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'MPC隐私计算URL',\n  `nodeWebSocket` varchar(255) COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'WEBSOCKET地址',\n  PRIMARY KEY (`nodeId`)\n) ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\n\n-- ----------------------------\n-- Table structure for GMPC_TASK\n-- ----------------------------\nDROP TABLE IF EXISTS `GMPC_TASK`;\nCREATE TABLE `GMPC_TASK` (\n  `id` int NOT NULL AUTO_INCREMENT COMMENT '序号ID',\n  `taskID` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务ID',\n  `taskName` varchar(100) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务名称',\n  `taskDesc` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务简介',\n  `taskInvoker` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务发起者',\n  `hosts` varchar(500) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '节点信息',\n  `dataSets` varchar(500) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '数据信息',\n  `algo` int DEFAULT NULL COMMENT '算法类型',\n  `taskType` int DEFAULT NULL COMMENT '算法种类MPC/Train/Predict',\n  `mpcParams` varchar(255) COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'MPC参数',\n  `trainParams` varchar(255) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '机器学习参数',\n  `modelParams` varchar(255) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '模型训练参数',\n  `taskStatus` int DEFAULT NULL COMMENT '任务状态 1-初始化， 2-执行中， 3-执行成功，4-执行失败，5-主动中断',\n  `createTime` datetime DEFAULT NULL,\n  `updateTime` datetime DEFAULT NULL,\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=120 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\n\n-- ----------------------------\n-- Table structure for GMPC_TASKRESULT\n-- ----------------------------\nDROP TABLE IF EXISTS `GMPC_TASKRESULT`;\nCREATE TABLE `GMPC_TASKRESULT` (\n  `id` int NOT NULL AUTO_INCREMENT COMMENT '序号ID',\n  `taskID` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务结果ID',\n  `taskName` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务名称',\n  `taskDesc` varchar(300) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务描述',\n  `taskInvoker` varchar(50) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务发起者',\n  `taskStatus` int DEFAULT NULL COMMENT '任务状态',\n  `results` varchar(1000) COLLATE utf8mb4_bin DEFAULT NULL COMMENT '任务结果',\n  `broadcastFlag` int DEFAULT NULL COMMENT '广播标记',\n  `createTime` datetime DEFAULT NULL COMMENT '创建时间',\n  `updateTime` datetime DEFAULT NULL COMMENT '更新时间',\n  PRIMARY KEY (`id`)\n) ENGINE=InnoDB AUTO_INCREMENT=46 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;\n\nSET FOREIGN_KEY_CHECKS = 1;"
+	if err := ioutil.WriteFile(filepath.Join(s.Stack.InitDir, "config", "GMPC_DB.sql"), []byte(initSql), 0755); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *StackManager) copyDataExchangeConfigToVolumes() error {
 	configDir := filepath.Join(s.Stack.RuntimeDir, "config")
 	for _, member := range s.Stack.Members {
@@ -520,6 +601,24 @@ func (s *StackManager) copyDataExchangeConfigToVolumes() error {
 		if err := docker.CopyFileToVolume(s.ctx, volumeName, path.Join(memberDXDir, "key.pem"), "/key.pem"); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (s *StackManager) copyMPCConfigToVolumes() error {
+	configDir := filepath.Join(s.Stack.RuntimeDir, "config")
+	for _, member := range s.Stack.Members {
+		// Copy files into docker volumes
+		volumeName := fmt.Sprintf("%s_mpc_%s", s.Stack.Name, member.ID)
+		if err := docker.CopyFileToVolume(s.ctx, volumeName, path.Join(configDir, fmt.Sprintf("mpc_%s.py", member.ID)), "config.py"); err != nil {
+			return err
+		}
+
+		// TODO
+		// Initialize mysql
+		//if err := docker.RunDockerCommand(context.Background(), s.Stack.StackDir, "run", "--rm", "-e", "MYSQL_DATABASE=GMPC_DB", "-e", "MYSQL_ROOT_PASSWORD=root", "-v", fmt.Sprintf("mysql_%s:/var/lib/mysql", member.ID), "-v", fmt.Sprintf("%s:/docker-entrypoint-initdb.d/GMPC_DB.sql", path.Join(configDir, "GMPC_DB.sql")), constants.MysqlImageName); err != nil {
+		//	return err
+		//}
 	}
 	return nil
 }
@@ -566,6 +665,17 @@ func (s *StackManager) createMember(id string, index int, options *types.InitOpt
 
 	if options.SandboxEnabled {
 		member.ExposedSandboxPort = nextPort
+		nextPort++
+	}
+	// mpc
+	member.ExposedMysqlPort = nextPort
+	nextPort++
+	member.ExposedMPCGWPort = nextPort
+	nextPort++
+	member.ExposedMPCWSPort = nextPort
+	nextPort++
+	for i := 0; i < 10; i++ {
+		member.ExposedMPCPorts = append(member.ExposedMPCPorts, nextPort)
 		nextPort++
 	}
 	return member, nil
@@ -837,6 +947,10 @@ func (s *StackManager) runFirstTimeSetup(options *types.StartOptions) (messages 
 	}
 
 	if err := s.copyDataExchangeConfigToVolumes(); err != nil {
+		return messages, err
+	}
+
+	if err := s.copyMPCConfigToVolumes(); err != nil {
 		return messages, err
 	}
 
