@@ -135,7 +135,7 @@ func initCommon(args []string) error {
 	initOptions.OrgNames = orgNames
 	initOptions.NodeNames = nodeNames
 
-	if len(initOptions.MPCTypes) == 0 {
+	if len(initOptions.IP) > 0 && len(initOptions.MPCTypes) == 0 {
 		mpcTypes := make([]string, initOptions.MemberCount)
 		for i := 0; i < initOptions.MemberCount; i++ {
 			name, _ := prompt(fmt.Sprintf("mpc types for mpc_%d: ", i), validateCount)
@@ -272,6 +272,6 @@ func init() {
 	initCmd.PersistentFlags().StringVar(&initOptions.IPFSMode, "ipfs-mode", "private", fmt.Sprintf("Set the mode in which IFPS operates. Options are: %v", fftypes.FFEnumValues(types.IPFSMode)))
 	initCmd.PersistentFlags().StringArrayVar(&initOptions.OrgNames, "org-name", []string{}, "Organization name")
 	initCmd.PersistentFlags().StringArrayVar(&initOptions.NodeNames, "node-name", []string{}, "Node name")
-	initCmd.PersistentFlags().StringVar(&initOptions.IP, "ip", "", "external ip")
+	initCmd.PersistentFlags().StringVar(&initOptions.IP, "ip", "", "external ip for mpc")
 	rootCmd.AddCommand(initCmd)
 }

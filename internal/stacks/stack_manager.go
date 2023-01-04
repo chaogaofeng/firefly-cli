@@ -434,8 +434,11 @@ func (s *StackManager) writeConfig(options *types.InitOptions) error {
 		return err
 	}
 
-	if err := s.writeMPCConfig(options); err != nil {
-		return err
+	// 开启mpc
+	if len(options.MPCTypes) > 0 {
+		if err := s.writeMPCConfig(options); err != nil {
+			return err
+		}
 	}
 
 	for _, member := range s.Stack.Members {
@@ -565,8 +568,8 @@ NODE_MPCPORT = '%d-%d'
 			options.IP,
 			member.ExposedMPCWSPort,
 			fftypes.NewUUID(),
-			member.NodeName,
-			member.NodeName,
+			fmt.Sprintf("%s-%s", member.OrgName, member.NodeName),
+			fmt.Sprintf("%s-%s", member.OrgName, member.NodeName),
 			options.MPCTypes[i],
 			options.IP,
 			member.ExposedMPCGWPort,
