@@ -376,7 +376,7 @@ func (p *FabricProvider) extractChaincode() error {
 	var containerName string
 	for _, member := range p.stack.Members {
 		if !member.External {
-			containerName = fmt.Sprintf("%s_firefly_core_%s", p.stack.Name, member.ID)
+			containerName = fmt.Sprintf("%s_gdc_core_%s", p.stack.Name, member.ID)
 			break
 		}
 	}

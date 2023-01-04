@@ -56,7 +56,7 @@ func ReadFireFlyContract(ctx context.Context, s *types.Stack) (*ethtypes.Compile
 	var containerName string
 	for _, member := range s.Members {
 		if !member.External {
-			containerName = fmt.Sprintf("%s_firefly_core_%s", s.Name, member.ID)
+			containerName = fmt.Sprintf("%s_gdc_core_%s", s.Name, member.ID)
 			break
 		}
 	}

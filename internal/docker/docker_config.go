@@ -88,10 +88,10 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 		// Look at the VersionManifest to see if a specific version of FireFly was provided, else use latest, assuming a locally built image
 
 		if !member.External {
-			configFile := filepath.Join(s.RuntimeDir, "config", fmt.Sprintf("firefly_core_%s.yml", member.ID))
-			compose.Services["firefly_core_"+member.ID] = &Service{
+			configFile := filepath.Join(s.RuntimeDir, "config", fmt.Sprintf("gdc_core_%s.yml", member.ID))
+			compose.Services["gdc_core_"+member.ID] = &Service{
 				Image:         s.VersionManifest.FireFly.GetDockerImageString(),
-				ContainerName: fmt.Sprintf("%s_firefly_core_%s", s.Name, member.ID),
+				ContainerName: fmt.Sprintf("%s_gdc_core_%s", s.Name, member.ID),
 				Ports: []string{
 					fmt.Sprintf("%d:%d", member.ExposedFireflyPort, member.ExposedFireflyPort),
 					fmt.Sprintf("%d:%d", member.ExposedFireflyAdminSPIPort, member.ExposedFireflyAdminSPIPort),
@@ -100,8 +100,8 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 				DependsOn: map[string]map[string]string{},
 				Logging:   StandardLogOptions,
 			}
-			compose.Services["firefly_core_"+member.ID].DependsOn["dataexchange_"+member.ID] = map[string]string{"condition": "service_started"}
-			compose.Services["firefly_core_"+member.ID].DependsOn["ipfs_"+member.ID] = map[string]string{"condition": "service_healthy"}
+			compose.Services["gdc_core_"+member.ID].DependsOn["dataexchange_"+member.ID] = map[string]string{"condition": "service_started"}
+			compose.Services["gdc_core_"+member.ID].DependsOn["ipfs_"+member.ID] = map[string]string{"condition": "service_healthy"}
 		}
 		if s.Database == "postgres" {
 			compose.Services["postgres_"+member.ID] = &Service{
@@ -122,7 +122,7 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 				Logging: StandardLogOptions,
 			}
 			compose.Volumes[fmt.Sprintf("postgres_%s", member.ID)] = struct{}{}
-			if service, ok := compose.Services[fmt.Sprintf("firefly_core_%s", member.ID)]; ok {
+			if service, ok := compose.Services[fmt.Sprintf("gdc_core_%s", member.ID)]; ok {
 				service.DependsOn["postgres_"+member.ID] = map[string]string{"condition": "service_healthy"}
 			}
 		}
@@ -168,7 +168,7 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 				ContainerName: fmt.Sprintf("%s_sandbox_%s", s.Name, member.ID),
 				Ports:         []string{fmt.Sprintf("%d:3001", member.ExposedSandboxPort)},
 				Environment: map[string]interface{}{
-					"FF_ENDPOINT": fmt.Sprintf("http://firefly_core_%d:%d", *member.Index, member.ExposedFireflyPort),
+					"FF_ENDPOINT": fmt.Sprintf("http://gdc_core_%d:%d", *member.Index, member.ExposedFireflyPort),
 				},
 			}
 		}
@@ -196,8 +196,6 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 					"MYSQL_DATABASE":      "GMPC_DB",
 				},
 				Volumes: []string{
-					// TODO
-					fmt.Sprintf("%s:/docker-entrypoint-initdb.d/GMPC_DB.sql", path.Join(s.RuntimeDir, "config", "GMPC_DB.sql")),
 					fmt.Sprintf("mysql_%s:/var/lib/mysql", member.ID),
 				},
 				Logging: StandardLogOptions,
@@ -217,7 +215,7 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 				Ports:         ports,
 				DependsOn: map[string]map[string]string{
 					fmt.Sprintf("mysql_%s", member.ID):        {"condition": "service_started"},
-					fmt.Sprintf("firefly_core_%s", member.ID): {"condition": "service_started"},
+					fmt.Sprintf("gdc_core_%s", member.ID): {"condition": "service_started"},
 				},
 				// TODO
 				//Volumes: []string{fmt.Sprintf("mpc_%s:/usr/src/MP-SPDZ/config.py", member.ID)},

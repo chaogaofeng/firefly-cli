@@ -32,7 +32,7 @@
   "mpc": {
     "image": "glodnet/gdc-mpc",
     "tag": "latest",
-    "sha": "6d1c41c85a2359f9172ccd32123eca9255fd116f4ba5fb8ac8f522b54e22b515"
+    "sha": "f8da74da281ab81d5691f065624e86bbf572f060620f7899875db177705926a6"
   },
   "signer": {
     "image": "glodnet/gdc-signer",

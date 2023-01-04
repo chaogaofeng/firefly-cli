@@ -218,7 +218,7 @@ func (s *StackManager) buildDockerCompose() *docker.DockerComposeConfig {
 
 		// Add a dependency so each firefly core container won't start up until dependencies are up
 		for _, member := range s.Stack.Members {
-			if service, ok := compose.Services[fmt.Sprintf("firefly_core_%v", *member.Index)]; ok {
+			if service, ok := compose.Services[fmt.Sprintf("gdc_core_%v", *member.Index)]; ok {
 				condition := "service_started"
 				if serviceDefinition.Service.HealthCheck != nil {
 					condition = "service_healthy"
@@ -459,7 +459,7 @@ func (s *StackManager) writeConfig(options *types.InitOptions) error {
 			config.Plugins.Tokens = append(config.Plugins.Tokens, tokenConfig)
 		}
 
-		coreConfigFilename := filepath.Join(s.Stack.InitDir, "config", fmt.Sprintf("firefly_core_%s.yml", member.ID))
+		coreConfigFilename := filepath.Join(s.Stack.InitDir, "config", fmt.Sprintf("gdc_core_%s.yml", member.ID))
 		if err := core.WriteFireflyConfig(config, coreConfigFilename, options.ExtraCoreConfigPath); err != nil {
 			return err
 		}
@@ -533,7 +533,7 @@ func (s *StackManager) writeMPCConfig(options *types.InitOptions) error {
 #CONFIG
 
 # block chain regis node api info
-BCAPI_REGISNODE_URL = 'http://%s:5000/api/v1/dai/RegisterMPCNode'
+BCAPI_REGISNODE_URL = 'http://%s/api/v1/dai/RegisterMPCNode'
 
 # database configuration
 DB_HOST = '%s'
@@ -544,7 +544,7 @@ DB_DATABASENAME = 'GMPC_DB'
 DB_CHARSET = 'utf8mb4'
 
 # websocket ip & port
-WS_BROADCAST_IP = '0.0.0.0'
+WS_BROADCAST_IP = '%s'
 WS_BROADCAST_PORT = %d
 WS_BROADCAST_FLAG = 3
 
@@ -554,19 +554,21 @@ NODE_NAME = '%s'
 NODE_TAG = '%stag'
 NODE_TYPE = %s
 NODE_ADDRESS = ''
-NODE_APIADDRESS = '0.0.0.0'
+NODE_APIADDRESS = '%s'
 NODE_APIPORT = %d
 NODE_MPCADDRESS = '%s'
 NODE_MPCPORT = '%d-%d'
-		`
+`
 		config := fmt.Sprintf(configTemplate,
-			fmt.Sprintf("firefly_core_%s", member.ID),
+			fmt.Sprintf("gdc_core_%s:%d", member.ID, member.ExposedFireflyPort),
 			fmt.Sprintf("mysql_%s", member.ID),
+			options.IP,
 			member.ExposedMPCWSPort,
 			fftypes.NewUUID(),
 			member.NodeName,
 			member.NodeName,
 			options.MPCTypes[i],
+			options.IP,
 			member.ExposedMPCGWPort,
 			options.IP,
 			member.ExposedMPCPorts[0],
@@ -614,11 +616,10 @@ func (s *StackManager) copyMPCConfigToVolumes() error {
 			return err
 		}
 
-		// TODO
 		// Initialize mysql
-		//if err := docker.RunDockerCommand(context.Background(), s.Stack.StackDir, "run", "--rm", "-e", "MYSQL_DATABASE=GMPC_DB", "-e", "MYSQL_ROOT_PASSWORD=root", "-v", fmt.Sprintf("mysql_%s:/var/lib/mysql", member.ID), "-v", fmt.Sprintf("%s:/docker-entrypoint-initdb.d/GMPC_DB.sql", path.Join(configDir, "GMPC_DB.sql")), constants.MysqlImageName); err != nil {
-		//	return err
-		//}
+		if err := docker.RunDockerCommand(s.ctx, s.Stack.StackDir, "run", "--rm", "-e", "MYSQL_DATABASE=GMPC_DB", "-e", "MYSQL_ROOT_PASSWORD=root", "-v", fmt.Sprintf("mysql_%s:/var/lib/mysql", member.ID), "-v", fmt.Sprintf("%s:/docker-entrypoint-initdb.d/GMPC_DB.sql", path.Join(configDir, "GMPC_DB.sql")), constants.MysqlImageName, "/bin/sh", "-c", "exit", "0"); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1084,7 +1085,7 @@ func (s *StackManager) runFirstTimeSetup(options *types.StartOptions) (messages 
 func (s *StackManager) ensureFireflyNodesUp(firstTimeSetup bool) error {
 	for _, member := range s.Stack.Members {
 		if member.External {
-			configFilename := filepath.Join(s.Stack.RuntimeDir, "config", fmt.Sprintf("firefly_core_%v.yml", member.ID))
+			configFilename := filepath.Join(s.Stack.RuntimeDir, "config", fmt.Sprintf("gdc_core_%v.yml", member.ID))
 			var port int
 			if firstTimeSetup {
 				port = member.ExposedFireflyAdminSPIPort
@@ -1150,7 +1151,7 @@ func (s *StackManager) disableFireflyCoreContainers() error {
 	for _, member := range s.Stack.Members {
 		if !member.External {
 			// Temporarily set the entrypoint to not run anything
-			compose.Services[fmt.Sprintf("firefly_core_%v", *member.Index)].EntryPoint = []string{"/bin/sh", "-c", "exit", "0"}
+			compose.Services[fmt.Sprintf("gdc_core_%v", *member.Index)].EntryPoint = []string{"/bin/sh", "-c", "exit", "0"}
 		}
 	}
 	return s.writeDockerCompose(compose)
@@ -1163,7 +1164,7 @@ func (s *StackManager) patchFireFlyCoreConfigs(workingDir string, org *types.Org
 			return err
 		}
 		s.Log.Debug(fmt.Sprintf("patching config for %s: %v", org.ID, newConfig))
-		configFile := path.Join(workingDir, fmt.Sprintf("firefly_core_%s.yml", org.ID))
+		configFile := path.Join(workingDir, fmt.Sprintf("gdc_core_%s.yml", org.ID))
 		merger := conflate.New()
 		if err := merger.AddFiles(configFile); err != nil {
 			return fmt.Errorf("failed merging config %s", configFile)
