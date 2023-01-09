@@ -18,6 +18,7 @@ package docker
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 
@@ -173,7 +174,7 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 			}
 		}
 		// mpc
-		{
+		if _, err := os.Stat(path.Join(s.InitDir, "config", fmt.Sprintf("mpc_%s.py", member.ID))); !os.IsNotExist(err) {
 			compose.Services["mysql_"+member.ID] = &Service{
 				Image:         constants.MysqlImageName,
 				ContainerName: fmt.Sprintf("%s_mysql_%s", s.Name, member.ID),

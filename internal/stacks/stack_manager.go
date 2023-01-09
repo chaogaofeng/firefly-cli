@@ -613,15 +613,17 @@ func (s *StackManager) copyDataExchangeConfigToVolumes() error {
 func (s *StackManager) copyMPCConfigToVolumes() error {
 	configDir := filepath.Join(s.Stack.RuntimeDir, "config")
 	for _, member := range s.Stack.Members {
-		// Copy files into docker volumes
-		volumeName := fmt.Sprintf("%s_mpc_%s", s.Stack.Name, member.ID)
-		if err := docker.CopyFileToVolume(s.ctx, volumeName, path.Join(configDir, fmt.Sprintf("mpc_%s.py", member.ID)), "config.py"); err != nil {
-			return err
-		}
+		if _, err := os.Stat(path.Join(s.Stack.InitDir, "config", fmt.Sprintf("mpc_%s.py", member.ID))); !os.IsNotExist(err) {
+			// Copy files into docker volumes
+			volumeName := fmt.Sprintf("%s_mpc_%s", s.Stack.Name, member.ID)
+			if err := docker.CopyFileToVolume(s.ctx, volumeName, path.Join(configDir, fmt.Sprintf("mpc_%s.py", member.ID)), "config.py"); err != nil {
+				return err
+			}
 
-		// Initialize mysql
-		if err := docker.RunDockerCommand(s.ctx, s.Stack.StackDir, "run", "--rm", "-e", "MYSQL_DATABASE=GMPC_DB", "-e", "MYSQL_ROOT_PASSWORD=root", "-v", fmt.Sprintf("mysql_%s:/var/lib/mysql", member.ID), "-v", fmt.Sprintf("%s:/docker-entrypoint-initdb.d/GMPC_DB.sql", path.Join(configDir, "GMPC_DB.sql")), constants.MysqlImageName, "/bin/sh", "-c", "exit", "0"); err != nil {
-			return err
+			// Initialize mysql
+			if err := docker.RunDockerCommand(s.ctx, s.Stack.StackDir, "run", "--rm", "-e", "MYSQL_DATABASE=GMPC_DB", "-e", "MYSQL_ROOT_PASSWORD=root", "-v", fmt.Sprintf("mysql_%s:/var/lib/mysql", member.ID), "-v", fmt.Sprintf("%s:/docker-entrypoint-initdb.d/GMPC_DB.sql", path.Join(configDir, "GMPC_DB.sql")), constants.MysqlImageName, "/bin/sh", "-c", "exit", "0"); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
