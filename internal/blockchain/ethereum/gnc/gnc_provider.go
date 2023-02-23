@@ -39,7 +39,7 @@ import (
 )
 
 const (
-	gnchaindImage         = "glodnet/gnchaind:v1.0.0"
+	gnchaindImage         = "glodnet/gnchaind-evm"
 	blockchainServiceName = "gnchain"
 )
 
