@@ -1,0 +1,64 @@
+{
+  "ethconnect": {
+    "image": "glodnet/gdc-ethconnect",
+    "tag": "v3.2.9",
+    "sha": "a9aed053d57d56532084e8d0229d3a6e8843054006cd82bb48c4800dcccc6449"
+  },
+  "evmconnect": {
+    "image": "glodnet/gdc-evmconnect",
+    "tag": "v1.1.9",
+    "sha": "6a81ba67bf2611274cbc1c1597ba0377ec91618d5bff5874f0bc489b1a7b0e10"
+  },
+  "fabconnect": {
+    "image": "glodnet/gdc-fabconnect",
+    "tag": "v.0.9.16",
+    "sha": "4f4798ee34eee0b67886f1baa37f4d50a33e2932c94312f189fe5f015f6564a4"
+  },
+  "dataexchange-https": {
+    "image": "glodnet/gdc-dataexchange-https",
+    "tag": "v1.1.0",
+    "sha": "9b191cf693a5b4a3b0bff48aac36fa76cf040d94033607a240cbd83e4fd2942c"
+  },
+  "tokens-erc1155": {
+    "image": "glodnet/gdc-tokens-erc1155",
+    "tag": "v1.1.5",
+    "sha": "fb42ae2e1f6d4853d0cb19fee1e56175dcb3b34c2114fd890d1e0439b3e615fd"
+  },
+  "tokens-erc20-erc721": {
+    "image": "glodnet/gdc-tokens-erc20-erc721",
+    "tag": "v1.1.4",
+    "sha": "6b2ce04bfa73c38639a2cdaeec9cb01564c839b4dee5b837d73dfbd56282e19a"
+  },
+  "secretflows-goldnet": {
+    "image": "harbor.op.hang-xin.cn/library/sf_project",
+    "tag": "v1.2",
+    "sha": "9f8d1632a82f1bfee9216a0d091af2cc293233e35f679d0edbc93ff02f6f5c8a"
+  },
+  "signer": {
+    "image": "glodnet/gdc-signer",
+    "tag": "v1.1.2",
+    "sha": "1023af58afadc0e62f423984f4dd863ef13552282a9fe60210b7cda4f9b43518"
+  },
+  "build": {
+    "firefly-builder": {
+      "image": "golang:1.18-alpine3.16"
+    },
+    "fabric-builder": {
+      "image": "golang:1.18-alpine3.16",
+      "platform": "linux/x86_64"
+    },
+    "solidity-builder": {
+      "image": "ethereum/solc:0.8.11-alpine"
+    },
+    "base": {
+      "image": "alpine:3.16"
+    }
+  },
+  "ui": {
+    "tag": "v1.1.5",
+    "release": "v1.1.5"
+  },
+  "cli": {
+    "tag": "v1.1.2"
+  }
+}

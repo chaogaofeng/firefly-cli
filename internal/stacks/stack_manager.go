@@ -30,6 +30,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hyperledger/firefly-cli/internal/secretflow"
+	"github.com/hyperledger/firefly-cli/internal/secretflow/goldnet"
+
 	"github.com/hyperledger/firefly-cli/internal/blockchain"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum/besu"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum/geth"
@@ -53,12 +56,13 @@ import (
 )
 
 type StackManager struct {
-	ctx                context.Context
-	Log                log.Logger
-	Stack              *types.Stack
-	blockchainProvider blockchain.IBlockchainProvider
-	tokenProviders     []tokens.ITokensProvider
-	IsOldFileStructure bool
+	ctx                 context.Context
+	Log                 log.Logger
+	Stack               *types.Stack
+	blockchainProvider  blockchain.IBlockchainProvider
+	tokenProviders      []tokens.ITokensProvider
+	secretFlowProviders []secretflow.ISecretFlowsProvider
+	IsOldFileStructure  bool
 }
 
 func ListStacks() ([]string, error) {
@@ -112,6 +116,7 @@ func (s *StackManager) InitStack(options *types.InitOptions) (err error) {
 		IPFSMode:          fftypes.FFEnum(options.IPFSMode),
 		ChannelName:       options.ChannelName,
 		ChaincodeName:     options.ChaincodeName,
+		RayHeadAddress:    options.RayHeadAddress,
 	}
 
 	tokenProviders, err := types.FFEnumArray(s.ctx, options.TokenProviders)
@@ -119,6 +124,12 @@ func (s *StackManager) InitStack(options *types.InitOptions) (err error) {
 		return err
 	}
 	s.Stack.TokenProviders = tokenProviders
+
+	secretFlowProviders, err := types.FFEnumArray(s.ctx, options.SecretFlowProviders)
+	if err != nil {
+		return err
+	}
+	s.Stack.SecretFlowProviders = secretFlowProviders
 
 	if s.Stack.IPFSMode.Equals(types.IPFSModePrivate) {
 		s.Stack.SwarmKey = GenerateSwarmKey()
@@ -162,6 +173,7 @@ func (s *StackManager) InitStack(options *types.InitOptions) (err error) {
 	s.Stack.VersionManifest = manifest
 	s.blockchainProvider = s.getBlockchainProvider()
 	s.tokenProviders = s.getITokenProviders()
+	s.secretFlowProviders = s.getISecretFlowProviders()
 
 	for i := 0; i < options.MemberCount; i++ {
 		externalProcess := i < options.ExternalProcesses
@@ -207,6 +219,9 @@ func (s *StackManager) buildDockerCompose() *docker.DockerComposeConfig {
 	for i, tp := range s.tokenProviders {
 		extraServices = append(extraServices, tp.GetDockerServiceDefinitions(i)...)
 	}
+	for i, tp := range s.secretFlowProviders {
+		extraServices = append(extraServices, tp.GetDockerServiceDefinitions(i)...)
+	}
 
 	for _, serviceDefinition := range extraServices {
 		// Add each service definition to the docker compose file
@@ -218,7 +233,7 @@ func (s *StackManager) buildDockerCompose() *docker.DockerComposeConfig {
 
 		// Add a dependency so each firefly core container won't start up until dependencies are up
 		for _, member := range s.Stack.Members {
-			if service, ok := compose.Services[fmt.Sprintf("firefly_core_%v", *member.Index)]; ok {
+			if service, ok := compose.Services[fmt.Sprintf("gdc_core_%v", *member.Index)]; ok {
 				condition := "service_started"
 				if serviceDefinition.Service.HealthCheck != nil {
 					condition = "service_healthy"
@@ -262,6 +277,7 @@ func (s *StackManager) LoadStack(stackName string) error {
 	s.Stack.StackDir = stackDir
 	s.blockchainProvider = s.getBlockchainProvider()
 	s.tokenProviders = s.getITokenProviders()
+	s.secretFlowProviders = s.getISecretFlowProviders()
 
 	if s.Stack.RequestTimeout > 0 {
 		core.SetRequestTimeout(s.Stack.RequestTimeout)
@@ -451,7 +467,13 @@ func (s *StackManager) writeConfig(options *types.InitOptions) error {
 			config.Plugins.Tokens = append(config.Plugins.Tokens, tokenConfig)
 		}
 
-		coreConfigFilename := filepath.Join(s.Stack.InitDir, "config", fmt.Sprintf("firefly_core_%s.yml", member.ID))
+		for iSecretFlow, tp := range s.secretFlowProviders {
+			secretFlowConfig := tp.GetFireflyConfig(member, iSecretFlow)
+			secretFlowConfig.Name = tp.GetName()
+			config.Plugins.SecretFlows = append(config.Plugins.SecretFlows, secretFlowConfig)
+		}
+
+		coreConfigFilename := filepath.Join(s.Stack.InitDir, "config", fmt.Sprintf("gdc_core_%s.yml", member.ID))
 		if err := core.WriteFireflyConfig(config, coreConfigFilename, options.ExtraCoreConfigPath); err != nil {
 			return err
 		}
@@ -558,6 +580,12 @@ func (s *StackManager) createMember(id string, index int, options *types.InitOpt
 		nextPort++
 	}
 
+	for range options.SecretFlowProviders {
+		member.ExposedSecretFlowsPorts = append(member.ExposedSecretFlowsPorts, nextPort)
+		nextPort += secretflow.RangeInterval // port range
+		nextPort++
+	}
+
 	account, err := s.blockchainProvider.CreateAccount([]string{member.OrgName, member.OrgName})
 	if err != nil {
 		return nil, err
@@ -659,6 +687,14 @@ func (s *StackManager) PullStack(options *types.PullOptions) error {
 		}
 	}
 
+	for iTok, tp := range s.secretFlowProviders {
+		for _, service := range tp.GetDockerServiceDefinitions(iTok) {
+			if !manifestImages[service.Service.Image] {
+				images = append(images, service.Service.Image)
+			}
+		}
+	}
+
 	// Use docker to pull every image - retry on failure
 	for _, image := range images {
 		s.Log.Info(fmt.Sprintf("pulling '%s'", image))
@@ -675,6 +711,11 @@ func (s *StackManager) removeVolumes() {
 		volumes = append(volumes, service.VolumeNames...)
 	}
 	for iTok, tp := range s.tokenProviders {
+		for _, service := range tp.GetDockerServiceDefinitions(iTok) {
+			volumes = append(volumes, service.VolumeNames...)
+		}
+	}
+	for iTok, tp := range s.secretFlowProviders {
 		for _, service := range tp.GetDockerServiceDefinitions(iTok) {
 			volumes = append(volumes, service.VolumeNames...)
 		}
@@ -880,6 +921,7 @@ func (s *StackManager) runFirstTimeSetup(options *types.StartOptions) (messages 
 	}
 
 	newConfig.Namespaces.Predefined[0].Plugins = append(newConfig.Namespaces.Predefined[0].Plugins, types.FFEnumArrayToStrings(s.Stack.TokenProviders)...)
+	newConfig.Namespaces.Predefined[0].Plugins = append(newConfig.Namespaces.Predefined[0].Plugins, types.FFEnumArrayToStrings(s.Stack.SecretFlowProviders)...)
 
 	var contractDeploymentResult *types.ContractDeploymentResult
 	if s.Stack.MultipartyEnabled {
@@ -963,6 +1005,13 @@ func (s *StackManager) runFirstTimeSetup(options *types.StartOptions) (messages 
 		}
 	}
 
+	s.Log.Info("registering secretflow providers")
+	for iTok, tp := range s.secretFlowProviders {
+		if err := tp.FirstTimeSetup(iTok); err != nil {
+			return messages, err
+		}
+	}
+
 	// Update the stack state with any new state that was created as a part of the setup process
 	return messages, s.writeStackStateJSON(s.Stack.RuntimeDir)
 }
@@ -970,7 +1019,7 @@ func (s *StackManager) runFirstTimeSetup(options *types.StartOptions) (messages 
 func (s *StackManager) ensureFireflyNodesUp(firstTimeSetup bool) error {
 	for _, member := range s.Stack.Members {
 		if member.External {
-			configFilename := filepath.Join(s.Stack.RuntimeDir, "config", fmt.Sprintf("firefly_core_%v.yml", member.ID))
+			configFilename := filepath.Join(s.Stack.RuntimeDir, "config", fmt.Sprintf("gdc_core_%v.yml", member.ID))
 			var port int
 			if firstTimeSetup {
 				port = member.ExposedFireflyAdminSPIPort
@@ -1036,7 +1085,7 @@ func (s *StackManager) disableFireflyCoreContainers() error {
 	for _, member := range s.Stack.Members {
 		if !member.External {
 			// Temporarily set the entrypoint to not run anything
-			compose.Services[fmt.Sprintf("firefly_core_%v", *member.Index)].EntryPoint = []string{"/bin/sh", "-c", "exit", "0"}
+			compose.Services[fmt.Sprintf("gdc_core_%v", *member.Index)].EntryPoint = []string{"/bin/sh", "-c", "exit", "0"}
 		}
 	}
 	return s.writeDockerCompose(compose)
@@ -1049,7 +1098,7 @@ func (s *StackManager) patchFireFlyCoreConfigs(workingDir string, org *types.Org
 			return err
 		}
 		s.Log.Debug(fmt.Sprintf("patching config for %s: %v", org.ID, newConfig))
-		configFile := path.Join(workingDir, fmt.Sprintf("firefly_core_%s.yml", org.ID))
+		configFile := path.Join(workingDir, fmt.Sprintf("gdc_core_%s.yml", org.ID))
 		merger := conflate.New()
 		if err := merger.AddFiles(configFile); err != nil {
 			return fmt.Errorf("failed merging config %s", configFile)
@@ -1176,6 +1225,19 @@ func (s *StackManager) getITokenProviders() []tokens.ITokensProvider {
 			tps[i] = erc1155.NewERC1155Provider(s.ctx, s.Stack, s.getBlockchainProvider())
 		case types.TokenProviderERC20_ERC721:
 			tps[i] = erc20erc721.NewERC20ERC721Provider(s.ctx, s.Stack, s.getBlockchainProvider())
+		default:
+			return nil
+		}
+	}
+	return tps
+}
+
+func (s *StackManager) getISecretFlowProviders() []secretflow.ISecretFlowsProvider {
+	tps := make([]secretflow.ISecretFlowsProvider, len(s.Stack.SecretFlowProviders))
+	for i, tp := range s.Stack.SecretFlowProviders {
+		switch tp {
+		case types.SecretFlowProviderGOLD:
+			tps[i] = goldnet.NewSecretFlowProvider(s.ctx, s.Stack)
 		default:
 			return nil
 		}

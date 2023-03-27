@@ -24,8 +24,8 @@ import (
 var homeDir, _ = os.UserHomeDir()
 var StacksDir = filepath.Join(homeDir, ".firefly", "stacks")
 
-var FireFlyCoreImageName = "glodnet/firefly"
+var FireFlyCoreImageName = "glodnet/gdc-core"
 var IPFSImageName = "ipfs/go-ipfs:v0.10.0"
 var PostgresImageName = "postgres"
 var PrometheusImageName = "prom/prometheus"
-var SandboxImageName = "ghcr.io/hyperledger/firefly-sandbox:latest"
+var SandboxImageName = "glodnet/gdc-sandbox:latest"

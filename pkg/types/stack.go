@@ -34,12 +34,14 @@ type Stack struct {
 	BlockchainConnector    fftypes.FFEnum   `json:"blockchainConnector"`
 	BlockchainNodeProvider fftypes.FFEnum   `json:"blockchainNodeProvider"`
 	TokenProviders         []fftypes.FFEnum `json:"tokenProviders"`
+	SecretFlowProviders    []fftypes.FFEnum `json:"secretFlowProviders"`
 	VersionManifest        *VersionManifest `json:"versionManifest,omitempty"`
 	PrometheusEnabled      bool             `json:"prometheusEnabled,omitempty"`
 	SandboxEnabled         bool             `json:"sandboxEnabled,omitempty"`
 	MultipartyEnabled      bool             `json:"multiparty"`
 	ExposedPrometheusPort  int              `json:"exposedPrometheusPort,omitempty"`
 	ContractAddress        string           `json:"contractAddress,omitempty"`
+	RayHeadAddress         string           `json:"rayHeadAddress,omitempty"`
 	ChainIDPtr             *int64           `json:"chainID,omitempty"`
 	RemoteNodeURL          string           `json:"remoteNodeURL,omitempty"`
 	DisableTokenFactories  bool             `json:"disableTokenFactories,omitempty"`

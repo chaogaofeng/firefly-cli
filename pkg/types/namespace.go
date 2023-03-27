@@ -30,6 +30,7 @@ type Plugins struct {
 	SharedStorage []*SharedStorageConfig `yaml:"sharedstorage,omitempty"`
 	DataExchange  []*DataExchangeConfig  `yaml:"dataexchange,omitempty"`
 	Tokens        []*TokensConfig        `yaml:"tokens,omitempty"`
+	SecretFlows   []*SecretFlowsConfig   `yaml:"secretflow,omitempty"`
 }
 
 type MultipartyConfig struct {

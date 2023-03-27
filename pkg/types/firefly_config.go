@@ -139,6 +139,16 @@ type FFTokensConfig struct {
 	URL string `yaml:"url,omitempty"`
 }
 
+type SecretFlowsConfig struct {
+	Type         string              `yaml:"type,omitempty"`
+	Name         string              `yaml:"name,omitempty"`
+	GNSecretFlow *GNSecretFlowConfig `yaml:"goldnet,omitempty"`
+}
+
+type GNSecretFlowConfig struct {
+	URL string `yaml:"url,omitempty"`
+}
+
 type DBEventsConfig struct {
 	BufferSize int `yaml:"bufferSize,omitempty"`
 }

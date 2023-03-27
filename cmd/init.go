@@ -74,6 +74,9 @@ func initCommon(args []string) error {
 	if err := validateTokensProvider(initOptions.TokenProviders, initOptions.BlockchainNodeProvider); err != nil {
 		return err
 	}
+	if err := validateSecretFlowsProvider(initOptions.SecretFlowProviders); err != nil {
+		return err
+	}
 	if err := validateReleaseChannel(initOptions.ReleaseChannel); err != nil {
 		return err
 	}
@@ -220,6 +223,16 @@ func validateTokensProvider(input []string, blockchainNodeProviderInput string) 
 	return nil
 }
 
+func validateSecretFlowsProvider(input []string) error {
+	for _, t := range input {
+		_, err := fftypes.FFEnumParseString(context.Background(), types.SecretFlowsProvider, t)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func validateReleaseChannel(input string) error {
 	_, err := fftypes.FFEnumParseString(context.Background(), types.ReleaseChannelSelection, input)
 	return err
@@ -263,5 +276,7 @@ func init() {
 	initCmd.PersistentFlags().StringVar(&initOptions.IPFSMode, "ipfs-mode", "private", fmt.Sprintf("Set the mode in which IFPS operates. Options are: %v", fftypes.FFEnumValues(types.IPFSMode)))
 	initCmd.PersistentFlags().StringArrayVar(&initOptions.OrgNames, "org-name", []string{}, "Organization name")
 	initCmd.PersistentFlags().StringArrayVar(&initOptions.NodeNames, "node-name", []string{}, "Node name")
+	initCmd.PersistentFlags().StringArrayVar(&initOptions.SecretFlowProviders, "secretflow-providers", []string{"goldnet"}, fmt.Sprintf("SecretFlow providers to use. Options are: %v", fftypes.FFEnumValues(types.SecretFlowsProvider)))
+	initCmd.PersistentFlags().StringVar(&initOptions.RayHeadAddress, "ray-head", "secretflow_head:6379", "ray head address")
 	rootCmd.AddCommand(initCmd)
 }

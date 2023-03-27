@@ -151,7 +151,7 @@ func (e *Evmconnect) GenerateConfig(stack *types.Stack, org *types.Organization,
 }
 
 func getCoreURL(org *types.Organization) string {
-	host := fmt.Sprintf("firefly_core_%v", org.ID)
+	host := fmt.Sprintf("gdc_core_%v", org.ID)
 	if org.External {
 		host = "host.docker.internal"
 	}

@@ -42,6 +42,8 @@ type InitOptions struct {
 	BlockchainProvider       string
 	BlockchainNodeProvider   string
 	TokenProviders           []string
+	SecretFlowProviders      []string
+	RayHeadAddress           string
 	FireFlyVersion           string
 	ManifestPath             string
 	PrometheusEnabled        bool
@@ -109,6 +111,13 @@ var (
 	TokenProviderNone         = fftypes.FFEnumValue(TokenProvider, "none")
 	TokenProviderERC1155      = fftypes.FFEnumValue(TokenProvider, "erc1155")
 	TokenProviderERC20_ERC721 = fftypes.FFEnumValue(TokenProvider, "erc20_erc721")
+)
+
+const SecretFlowsProvider = "secretflow_provider"
+
+var (
+	SecretFlowProviderNone = fftypes.FFEnumValue(SecretFlowsProvider, "none")
+	SecretFlowProviderGOLD = fftypes.FFEnumValue(SecretFlowsProvider, "goldnet")
 )
 
 const ReleaseChannelSelection = "release_channel"
