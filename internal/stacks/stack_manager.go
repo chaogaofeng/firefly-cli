@@ -55,6 +55,70 @@ import (
 	"github.com/otiai10/copy"
 )
 
+const start_ipfs = `
+#!/bin/sh
+set -e
+user=ipfs
+repo="$IPFS_PATH"
+
+if [ ` + "`id -u`" + ` -eq 0 ]; then
+  echo "Changing user to $user"
+  # ensure folder is writable
+  su-exec "$user" test -w "$repo" || chown -R -- "$user" "$repo"
+  # restart script with new privileges
+  exec su-exec "$user" "$0" "$@"
+fi
+
+# 2nd invocation with regular user
+ipfs version
+
+if [ -e "$repo/config" ]; then
+  echo "Found IPFS fs-repo at $repo"
+else
+  case "$IPFS_PROFILE" in
+    "") INIT_ARGS="" ;;
+    *) INIT_ARGS="--profile=$IPFS_PROFILE" ;;
+  esac
+  ipfs init $INIT_ARGS
+  ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
+  ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+
+  # Set up the swarm key, if provided
+
+  SWARM_KEY_FILE="$repo/swarm.key"
+  SWARM_KEY_PERM=0400
+
+  # Create a swarm key from a given environment variable
+  if [ ! -z "$IPFS_SWARM_KEY" ] ; then
+    echo "Copying swarm key from variable..."
+    echo -e "$IPFS_SWARM_KEY" >"$SWARM_KEY_FILE" || exit 1
+    chmod $SWARM_KEY_PERM "$SWARM_KEY_FILE"
+  fi
+
+  # Unset the swarm key variable
+  unset IPFS_SWARM_KEY
+
+  # Check during initialization if a swarm key was provided and
+  # copy it to the ipfs directory with the right permissions
+  # WARNING: This will replace the swarm key if it exists
+  if [ ! -z "$IPFS_SWARM_KEY_FILE" ] ; then
+    echo "Copying swarm key from file..."
+    install -m $SWARM_KEY_PERM "$IPFS_SWARM_KEY_FILE" "$SWARM_KEY_FILE" || exit 1
+  fi
+
+  # Unset the swarm key file variable
+  unset IPFS_SWARM_KEY_FILE
+
+  if [ ! -z "$IPFS_BOOTSTRAP" ] ; then
+    ipfs bootstrap rm --all
+    echo -e "$IPFS_BOOTSTRAP" | ipfs bootstrap add
+  fi
+
+fi
+
+exec ipfs "$@"
+`
+
 type StackManager struct {
 	ctx                 context.Context
 	Log                 log.Logger
@@ -95,7 +159,11 @@ func (s *StackManager) InitStack(options *types.InitOptions) (err error) {
 	s.Stack = &types.Stack{
 		Name:                   options.StackName,
 		Members:                make([]*types.Organization, options.MemberCount),
-		ExposedBlockchainPort:  options.ServicesBasePort,
+		ExposedBlockchainPort:  options.FireFlyBasePort + 98,
+		ExposedBlockchainP2P:   options.FireFlyBasePort + 99,
+		IPFSBootStrap:          options.IPFSBootStrap,
+		SwarmKey:               options.SwarmKey,
+		NodebootStrap:          options.NodebootStrap,
 		Database:               fftypes.FFEnum(options.DatabaseProvider),
 		BlockchainProvider:     fftypes.FFEnum(options.BlockchainProvider),
 		BlockchainNodeProvider: fftypes.FFEnum(options.BlockchainNodeProvider),
@@ -117,6 +185,7 @@ func (s *StackManager) InitStack(options *types.InitOptions) (err error) {
 		ChannelName:       options.ChannelName,
 		ChaincodeName:     options.ChaincodeName,
 		RayHeadAddress:    options.RayHeadAddress,
+		Host:              options.Host,
 	}
 
 	tokenProviders, err := types.FFEnumArray(s.ctx, options.TokenProviders)
@@ -198,6 +267,9 @@ func (s *StackManager) InitStack(options *types.InitOptions) (err error) {
 	if err := s.writeDockerComposeOverride(compose); err != nil {
 		return fmt.Errorf("failed to write docker-compose.override.yml: %s", err)
 	}
+	if err := os.WriteFile(filepath.Join(s.Stack.StackDir, "start_ipfs"), []byte(start_ipfs), 0755); err != nil {
+		return fmt.Errorf("failed to write start_ipfs: %s", err)
+	}
 	return s.writeConfig(options)
 }
 
@@ -215,7 +287,7 @@ func (s *StackManager) runDockerComposeCommand(command ...string) error {
 
 func (s *StackManager) buildDockerCompose() *docker.DockerComposeConfig {
 	compose := docker.CreateDockerCompose(s.Stack)
-	extraServices := s.blockchainProvider.GetDockerServiceDefinitions()
+	extraServices := s.blockchainProvider.GetDockerServiceDefinitions(s.Stack.NodebootStrap)
 	for i, tp := range s.tokenProviders {
 		extraServices = append(extraServices, tp.GetDockerServiceDefinitions(i)...)
 	}
@@ -508,7 +580,7 @@ func (s *StackManager) writeDataExchangeCerts() error {
 		memberDXDir := path.Join(configDir, "dataexchange_"+member.ID)
 
 		// TODO: remove dependency on openssl here
-		opensslCmd := exec.Command("openssl", "req", "-new", "-x509", "-nodes", "-days", "365", "-subj", fmt.Sprintf("/CN=dataexchange_%s/O=member_%s", member.ID, member.ID), "-keyout", "key.pem", "-out", "cert.pem")
+		opensslCmd := exec.Command("openssl", "req", "-new", "-x509", "-nodes", "-days", "3650", "-subj", fmt.Sprintf("/CN=dataexchange_%s/O=member_%s", member.ID, member.ID), "-keyout", "key.pem", "-out", "cert.pem")
 		opensslCmd.Dir = filepath.Join(configDir, "dataexchange_"+member.ID)
 		if err := opensslCmd.Run(); err != nil {
 			return err
@@ -547,7 +619,7 @@ func (s *StackManager) copyDataExchangeConfigToVolumes() error {
 }
 
 func (s *StackManager) createMember(id string, index int, options *types.InitOptions, external bool) (*types.Organization, error) {
-	serviceBase := options.ServicesBasePort + (index * 100)
+	serviceBase := options.FireFlyBasePort + 10 + (index * 100)
 	member := &types.Organization{
 		ID:                         id,
 		Index:                      &index,
@@ -561,8 +633,12 @@ func (s *StackManager) createMember(id string, index int, options *types.InitOpt
 		NodeName:                   options.NodeNames[index],
 	}
 
-	nextPort := serviceBase + 5
+	nextPort := 5
 	member.ExposedDataexchangePort = serviceBase + nextPort
+	nextPort++
+	member.ExposedDataexchangeP2PPort = serviceBase + nextPort
+	nextPort++
+	member.ExposedIPFSP2PPort = serviceBase + nextPort
 	nextPort++
 	member.ExposedIPFSApiPort = serviceBase + nextPort
 	nextPort++
@@ -570,18 +646,18 @@ func (s *StackManager) createMember(id string, index int, options *types.InitOpt
 	nextPort++
 
 	if options.PrometheusEnabled {
-		member.ExposedFireflyMetricsPort = nextPort
+		member.ExposedFireflyMetricsPort = serviceBase + nextPort
 		nextPort++
-		member.ExposedConnectorMetricsPort = nextPort
+		member.ExposedConnectorMetricsPort = serviceBase + nextPort
 		nextPort++
 	}
 	for range options.TokenProviders {
-		member.ExposedTokensPorts = append(member.ExposedTokensPorts, nextPort)
+		member.ExposedTokensPorts = append(member.ExposedTokensPorts, serviceBase+nextPort)
 		nextPort++
 	}
 
 	for range options.SecretFlowProviders {
-		member.ExposedSecretFlowsPorts = append(member.ExposedSecretFlowsPorts, nextPort)
+		member.ExposedSecretFlowsPorts = append(member.ExposedSecretFlowsPorts, serviceBase+nextPort)
 		nextPort += secretflow.RangeInterval // port range
 		nextPort++
 	}
@@ -593,7 +669,7 @@ func (s *StackManager) createMember(id string, index int, options *types.InitOpt
 	member.Account = account
 
 	if options.SandboxEnabled {
-		member.ExposedSandboxPort = nextPort
+		member.ExposedSandboxPort = serviceBase + nextPort
 		nextPort++
 	}
 	return member, nil
@@ -672,7 +748,7 @@ func (s *StackManager) PullStack(options *types.PullOptions) error {
 	}
 
 	// Iterate over all images used by the blockchain provider
-	for _, service := range s.blockchainProvider.GetDockerServiceDefinitions() {
+	for _, service := range s.blockchainProvider.GetDockerServiceDefinitions(s.Stack.NodebootStrap) {
 		if !manifestImages[service.Service.Image] {
 			images = append(images, service.Service.Image)
 		}
@@ -707,7 +783,7 @@ func (s *StackManager) PullStack(options *types.PullOptions) error {
 
 func (s *StackManager) removeVolumes() {
 	var volumes []string
-	for _, service := range s.blockchainProvider.GetDockerServiceDefinitions() {
+	for _, service := range s.blockchainProvider.GetDockerServiceDefinitions(s.Stack.NodebootStrap) {
 		volumes = append(volumes, service.VolumeNames...)
 	}
 	for iTok, tp := range s.tokenProviders {
@@ -987,15 +1063,15 @@ func (s *StackManager) runFirstTimeSetup(options *types.StartOptions) (messages 
 	}
 
 	if s.Stack.MultipartyEnabled {
-		if s.Stack.ContractAddress == "" {
-			s.Log.Info("registering FireFly identities")
-			if err := s.registerFireflyIdentities(); err != nil {
-				return messages, err
-			}
-		} else {
-			messages = append(messages, "NOTE: You have selected to use a pre-existing FireFly smart contract, so you will need to register your org by calling the /network/organizations/self and the /network/nodes/self endpoints")
-			return messages, nil
+		//if s.Stack.ContractAddress == "" {
+		s.Log.Info("registering FireFly identities")
+		if err := s.registerFireflyIdentities(); err != nil {
+			return messages, err
 		}
+		//} else {
+		//	messages = append(messages, "NOTE: You have selected to use a pre-existing FireFly smart contract, so you will need to register your org by calling the /network/organizations/self and the /network/nodes/self endpoints")
+		//	return messages, nil
+		//}
 	}
 
 	s.Log.Info("initializing token providers")

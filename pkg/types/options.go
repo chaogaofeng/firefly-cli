@@ -30,10 +30,10 @@ type StartOptions struct {
 }
 
 type InitOptions struct {
-	StackName                string
-	MemberCount              int
-	FireFlyBasePort          int
-	ServicesBasePort         int
+	StackName       string
+	MemberCount     int
+	FireFlyBasePort int
+	//ServicesBasePort         int
 	DatabaseProvider         string
 	ExternalProcesses        int
 	OrgNames                 []string
@@ -60,10 +60,14 @@ type InitOptions struct {
 	ReleaseChannel           string
 	MultipartyEnabled        bool
 	IPFSMode                 string
+	NodebootStrap            string
+	IPFSBootStrap            string
+	SwarmKey                 string
 	CCPYAMLPaths             []string
 	MSPPaths                 []string
 	ChannelName              string
 	ChaincodeName            string
+	Host                     string
 }
 
 const IPFSMode = "ipfs_mode"

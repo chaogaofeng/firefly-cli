@@ -145,7 +145,7 @@ func (p *BesuProvider) DeployFireFlyContract() (*types.ContractDeploymentResult,
 	return p.connector.DeployContract(contract, "FireFly", p.stack.Members[0], nil)
 }
 
-func (p *BesuProvider) GetDockerServiceDefinitions() []*docker.ServiceDefinition {
+func (p *BesuProvider) GetDockerServiceDefinitions(bootnodes string) []*docker.ServiceDefinition {
 	addresses := ""
 	for i, member := range p.stack.Members {
 		account := member.Account.(*ethereum.Account)

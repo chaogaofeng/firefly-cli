@@ -225,7 +225,7 @@ func (p *FabricProvider) PostStart(firstTimeSetup bool) error {
 	return nil
 }
 
-func (p *FabricProvider) GetDockerServiceDefinitions() []*docker.ServiceDefinition {
+func (p *FabricProvider) GetDockerServiceDefinitions(bootnodes string) []*docker.ServiceDefinition {
 	if p.stack.RemoteFabricNetwork {
 		return p.getFabconnectServiceDefinitions(p.stack.Members)
 	}

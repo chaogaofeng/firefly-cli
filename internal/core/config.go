@@ -31,7 +31,7 @@ func NewFireflyConfig(stack *types.Stack, member *types.Organization) *types.Fir
 	// change the Name field of some of these plugins
 
 	spiHttpConfig := types.HttpServerConfig{
-		Port:      member.ExposedFireflyAdminSPIPort,
+		Port:      5101,
 		Address:   "0.0.0.0",
 		PublicURL: fmt.Sprintf("http://127.0.0.1:%d", member.ExposedFireflyAdminSPIPort),
 	}
@@ -43,7 +43,7 @@ func NewFireflyConfig(stack *types.Stack, member *types.Organization) *types.Fir
 			Port: 6060,
 		},
 		HTTP: &types.HttpServerConfig{
-			Port:      member.ExposedFireflyPort,
+			Port:      5000,
 			Address:   "0.0.0.0",
 			PublicURL: fmt.Sprintf("http://127.0.0.1:%d", member.ExposedFireflyPort),
 		},
@@ -97,7 +97,7 @@ func NewFireflyConfig(stack *types.Stack, member *types.Organization) *types.Fir
 	if stack.PrometheusEnabled {
 		memberConfig.Metrics = &types.MetricsServerConfig{
 			HttpServerConfig: types.HttpServerConfig{
-				Port:      member.ExposedFireflyMetricsPort,
+				Port:      6000,
 				Address:   "0.0.0.0",
 				PublicURL: fmt.Sprintf("http://127.0.0.1:%d", member.ExposedFireflyMetricsPort),
 			},

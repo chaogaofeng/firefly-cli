@@ -251,7 +251,7 @@ func randomHexString(length int) string {
 
 func init() {
 	initCmd.PersistentFlags().IntVarP(&initOptions.FireFlyBasePort, "firefly-base-port", "p", 5000, "Mapped port base of FireFly core API (1 added for each member)")
-	initCmd.PersistentFlags().IntVarP(&initOptions.ServicesBasePort, "services-base-port", "s", 5100, "Mapped port base of services (100 added for each member)")
+	//initCmd.PersistentFlags().IntVarP(&initOptions.ServicesBasePort, "services-base-port", "s", 5100, "Mapped port base of services (100 added for each member)")
 	initCmd.PersistentFlags().StringVarP(&initOptions.DatabaseProvider, "database", "d", "sqlite3", fmt.Sprintf("Database type to use. Options are: %v", fftypes.FFEnumValues(types.DatabaseSelection)))
 	initCmd.Flags().StringVarP(&initOptions.BlockchainConnector, "blockchain-connector", "c", "ethconnect", fmt.Sprintf("Blockchain connector to use. Options are: %v", fftypes.FFEnumValues(types.BlockchainConnector)))
 	initCmd.Flags().StringVarP(&initOptions.BlockchainProvider, "blockchain-provider", "b", "ethereum", fmt.Sprintf("Blockchain to use. Options are: %v", fftypes.FFEnumValues(types.BlockchainProvider)))
@@ -274,9 +274,13 @@ func init() {
 	initCmd.PersistentFlags().StringVar(&initOptions.ReleaseChannel, "channel", "stable", fmt.Sprintf("Select the FireFly release channel to use. Options are: %v", fftypes.FFEnumValues(types.ReleaseChannelSelection)))
 	initCmd.PersistentFlags().BoolVar(&initOptions.MultipartyEnabled, "multiparty", true, "Enable or disable multiparty mode")
 	initCmd.PersistentFlags().StringVar(&initOptions.IPFSMode, "ipfs-mode", "private", fmt.Sprintf("Set the mode in which IFPS operates. Options are: %v", fftypes.FFEnumValues(types.IPFSMode)))
+	initCmd.PersistentFlags().StringVar(&initOptions.SwarmKey, "swarm-key", "", fmt.Sprintf("Set the swarm key for IFPS"))
+	initCmd.PersistentFlags().StringVar(&initOptions.IPFSBootStrap, "ipfs-bootstrap", "", fmt.Sprintf("Set the bootstrap for IFPS"))
+	initCmd.PersistentFlags().StringVar(&initOptions.NodebootStrap, "node-bootstrap", "", fmt.Sprintf("Set the bootstrap for blockchain node"))
 	initCmd.PersistentFlags().StringArrayVar(&initOptions.OrgNames, "org-name", []string{}, "Organization name")
 	initCmd.PersistentFlags().StringArrayVar(&initOptions.NodeNames, "node-name", []string{}, "Node name")
-	initCmd.PersistentFlags().StringArrayVar(&initOptions.SecretFlowProviders, "secretflow-providers", []string{"goldnet"}, fmt.Sprintf("SecretFlow providers to use. Options are: %v", fftypes.FFEnumValues(types.SecretFlowsProvider)))
+	initCmd.PersistentFlags().StringArrayVar(&initOptions.SecretFlowProviders, "secretflow-providers", []string{"none"}, fmt.Sprintf("SecretFlow providers to use. Options are: %v", fftypes.FFEnumValues(types.SecretFlowsProvider)))
+	initCmd.PersistentFlags().StringVar(&initOptions.Host, "host", "", "public host ip")
 	initCmd.PersistentFlags().StringVar(&initOptions.RayHeadAddress, "ray-head", "secretflow_head:6379", "ray head address")
 	rootCmd.AddCommand(initCmd)
 }

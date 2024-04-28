@@ -18,6 +18,7 @@ package stacks
 
 import (
 	"fmt"
+	"strconv"
 )
 
 type DataExchangeListenerConfig struct {
@@ -38,6 +39,11 @@ type DataExchangePeerConfig struct {
 }
 
 func (s *StackManager) GenerateDataExchangeHTTPSConfig(memberId string) *DataExchangePeerConfig {
+	endpoint := fmt.Sprintf("https://dataexchange_%s:3001", memberId)
+	if s.Stack.Host != "" {
+		i, _ := strconv.Atoi(memberId)
+		endpoint = fmt.Sprintf("https://%s:%d", s.Stack.Host, s.Stack.Members[i].ExposedDataexchangeP2PPort)
+	}
 	return &DataExchangePeerConfig{
 		API: &DataExchangeListenerConfig{
 			Hostname: "0.0.0.0",
@@ -46,7 +52,7 @@ func (s *StackManager) GenerateDataExchangeHTTPSConfig(memberId string) *DataExc
 		P2P: &DataExchangeListenerConfig{
 			Hostname: "0.0.0.0",
 			Port:     3001,
-			Endpoint: fmt.Sprintf("https://dataexchange_%s:3001", memberId),
+			Endpoint: endpoint,
 		},
 		Peers: []*PeerConfig{},
 	}

@@ -27,7 +27,7 @@ type IBlockchainProvider interface {
 	DeployFireFlyContract() (*types.ContractDeploymentResult, error)
 	PreStart() error
 	PostStart(firstTimeSetup bool) error
-	GetDockerServiceDefinitions() []*docker.ServiceDefinition
+	GetDockerServiceDefinitions(bootnodes string) []*docker.ServiceDefinition
 	GetBlockchainPluginConfig(stack *types.Stack, org *types.Organization) (blockchainConfig *types.BlockchainConfig)
 	GetOrgConfig(stack *types.Stack, org *types.Organization) (coreConfig *types.OrgConfig)
 	Reset() error

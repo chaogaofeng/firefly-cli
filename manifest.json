@@ -6,8 +6,8 @@
   },
   "evmconnect": {
     "image": "glodnet/gdc-evmconnect",
-    "tag": "v1.1.9",
-    "sha": "6a81ba67bf2611274cbc1c1597ba0377ec91618d5bff5874f0bc489b1a7b0e10"
+    "tag": "v1.2.7",
+    "sha": "e9aeaede69de87ea3c308515f630911828e6fc44e567c5641d22ce40405ccda0"
   },
   "fabconnect": {
     "image": "glodnet/gdc-fabconnect",

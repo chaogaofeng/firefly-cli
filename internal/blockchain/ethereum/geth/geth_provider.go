@@ -171,7 +171,7 @@ func (p *GethProvider) DeployFireFlyContract() (*types.ContractDeploymentResult,
 	return p.connector.DeployContract(contract, "FireFly", p.stack.Members[0], nil)
 }
 
-func (p *GethProvider) GetDockerServiceDefinitions() []*docker.ServiceDefinition {
+func (p *GethProvider) GetDockerServiceDefinitions(bootnodes string) []*docker.ServiceDefinition {
 	gethCommand := fmt.Sprintf(`--datadir /data --syncmode 'full' --port 30311 --http --http.addr "0.0.0.0" --http.corsdomain="*"  -http.port 8545 --http.vhosts "*" --http.api 'admin,personal,eth,net,web3,txpool,miner,clique,debug' --networkid %d --miner.gasprice 0 --password /data/password --mine --allow-insecure-unlock --nodiscover --verbosity 4 --miner.gaslimit 16777215`, p.stack.ChainID())
 
 	serviceDefinitions := make([]*docker.ServiceDefinition, 1)
@@ -183,7 +183,11 @@ func (p *GethProvider) GetDockerServiceDefinitions() []*docker.ServiceDefinition
 			Command:       gethCommand,
 			Volumes:       []string{"geth:/data"},
 			Logging:       docker.StandardLogOptions,
-			Ports:         []string{fmt.Sprintf("%d:8545", p.stack.ExposedBlockchainPort)},
+			Ports: []string{
+				fmt.Sprintf("%d:30311/tcp", p.stack.ExposedBlockchainP2P),
+				fmt.Sprintf("%d:30311/udp", p.stack.ExposedBlockchainP2P),
+				fmt.Sprintf("%d:8545", p.stack.ExposedBlockchainPort),
+			},
 		},
 		VolumeNames: []string{"geth"},
 	}

@@ -28,6 +28,9 @@ type Stack struct {
 	Name                   string           `json:"name,omitempty"`
 	Members                []*Organization  `json:"members,omitempty"`
 	SwarmKey               string           `json:"swarmKey,omitempty"`
+	NodebootStrap          string           `json:"nodeBootStrap,omitempty"`
+	IPFSBootStrap          string           `json:"ipfsBootStrap,omitempty"`
+	ExposedBlockchainP2P   int              `json:"exposedBlockchainP2P,omitempty"`
 	ExposedBlockchainPort  int              `json:"exposedBlockchainPort,omitempty"`
 	Database               fftypes.FFEnum   `json:"database"`
 	BlockchainProvider     fftypes.FFEnum   `json:"blockchainProvider"`
@@ -42,6 +45,7 @@ type Stack struct {
 	ExposedPrometheusPort  int              `json:"exposedPrometheusPort,omitempty"`
 	ContractAddress        string           `json:"contractAddress,omitempty"`
 	RayHeadAddress         string           `json:"rayHeadAddress,omitempty"`
+	Host                   string           `json:"host,omitempty"`
 	ChainIDPtr             *int64           `json:"chainID,omitempty"`
 	RemoteNodeURL          string           `json:"remoteNodeURL,omitempty"`
 	DisableTokenFactories  bool             `json:"disableTokenFactories,omitempty"`

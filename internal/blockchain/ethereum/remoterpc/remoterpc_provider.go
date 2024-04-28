@@ -97,7 +97,7 @@ func (p *RemoteRPCProvider) DeployFireFlyContract() (*types.ContractDeploymentRe
 	return nil, fmt.Errorf("you must pre-deploy your FireFly contract when using a remote RPC endpoint")
 }
 
-func (p *RemoteRPCProvider) GetDockerServiceDefinitions() []*docker.ServiceDefinition {
+func (p *RemoteRPCProvider) GetDockerServiceDefinitions(bootnodes string) []*docker.ServiceDefinition {
 	defs := []*docker.ServiceDefinition{
 		p.signer.GetDockerServiceDefinition(p.stack.RemoteNodeURL),
 	}

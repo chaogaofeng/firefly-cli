@@ -39,7 +39,7 @@ import (
 )
 
 const (
-	gnchaindImage         = "glodnet/gnchaind:v1.0.0"
+	gnchaindImage         = "glodnet/gnchaind"
 	blockchainServiceName = "gnchain"
 )
 
@@ -187,7 +187,7 @@ func (p *GncProvider) DeployFireFlyContract() (*types.ContractDeploymentResult, 
 	return p.connector.DeployContract(contract, "FireFly", p.stack.Members[0], nil)
 }
 
-func (p *GncProvider) GetDockerServiceDefinitions() []*docker.ServiceDefinition {
+func (p *GncProvider) GetDockerServiceDefinitions(bootnodes string) []*docker.ServiceDefinition {
 	serviceDefinitions := make([]*docker.ServiceDefinition, 1)
 	serviceDefinitions[0] = &docker.ServiceDefinition{
 		ServiceName: blockchainServiceName,
@@ -195,13 +195,18 @@ func (p *GncProvider) GetDockerServiceDefinitions() []*docker.ServiceDefinition 
 			Image:         gnchaindImage,
 			ContainerName: fmt.Sprintf("%s_%s", p.stack.Name, blockchainServiceName),
 			Environment: map[string]interface{}{
-				"GNCHAIND_LOG_FORMAT":      "json",
-				"GNCHAIND_LOG_LEVEL":       "debug",
-				"GNCHAIND_KEYRING_BACKEND": "test",
+				"GNCHAIND_LOG_FORMAT":           "json",
+				"GNCHAIND_LOG_LEVEL":            "debug",
+				"GNCHAIND_KEYRING_BACKEND":      "test",
+				"GNCHAIND_P2P_PERSISTENT_PEERS": bootnodes,
 			},
 			Volumes: []string{blockchainServiceName + ":/root/.gnchain"},
 			Logging: docker.StandardLogOptions,
-			Ports:   []string{fmt.Sprintf("%d:8545", p.stack.ExposedBlockchainPort)},
+			Ports: []string{
+				fmt.Sprintf("%d:26656/tcp", p.stack.ExposedBlockchainP2P),
+				fmt.Sprintf("%d:26656/udp", p.stack.ExposedBlockchainP2P),
+				fmt.Sprintf("%d:8545", p.stack.ExposedBlockchainPort),
+			},
 		},
 		VolumeNames: []string{blockchainServiceName},
 	}

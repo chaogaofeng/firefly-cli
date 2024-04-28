@@ -92,8 +92,8 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 				Image:         s.VersionManifest.FireFly.GetDockerImageString(),
 				ContainerName: fmt.Sprintf("%s_gdc_core_%s", s.Name, member.ID),
 				Ports: []string{
-					fmt.Sprintf("%d:%d", member.ExposedFireflyPort, member.ExposedFireflyPort),
-					fmt.Sprintf("%d:%d", member.ExposedFireflyAdminSPIPort, member.ExposedFireflyAdminSPIPort),
+					fmt.Sprintf("%d:5000", member.ExposedFireflyPort),
+					fmt.Sprintf("%d:5101", member.ExposedFireflyAdminSPIPort),
 				},
 				Volumes:   []string{fmt.Sprintf("%s:/etc/firefly/firefly.core.yml:ro", configFile)},
 				DependsOn: map[string]map[string]string{},
@@ -129,10 +129,13 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 			Image:         constants.IPFSImageName,
 			ContainerName: fmt.Sprintf("%s_ipfs_%s", s.Name, member.ID),
 			Ports: []string{
+				fmt.Sprintf("%d:4001/udp", member.ExposedIPFSP2PPort),
+				fmt.Sprintf("%d:4001/tcp", member.ExposedIPFSP2PPort),
 				fmt.Sprintf("%d:5001", member.ExposedIPFSApiPort),
 				fmt.Sprintf("%d:8080", member.ExposedIPFSGWPort),
 			},
 			Volumes: []string{
+				fmt.Sprintf("./start_ipfs:/usr/local/bin/start_ipfs"),
 				fmt.Sprintf("ipfs_staging_%s:/export", member.ID),
 				fmt.Sprintf("ipfs_data_%s:/data/ipfs", member.ID),
 			},
@@ -147,6 +150,7 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 		if s.IPFSMode.Equals(types.IPFSModePrivate) {
 			sharedStorage.Environment = map[string]interface{}{
 				"IPFS_SWARM_KEY":    s.SwarmKey,
+				"IPFS_BOOTSTRAP":    s.IPFSBootStrap,
 				"LIBP2P_FORCE_PNET": "1",
 			}
 		}
@@ -156,9 +160,12 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 		compose.Services["dataexchange_"+member.ID] = &Service{
 			Image:         s.VersionManifest.DataExchange.GetDockerImageString(),
 			ContainerName: fmt.Sprintf("%s_dataexchange_%s", s.Name, member.ID),
-			Ports:         []string{fmt.Sprintf("%d:3000", member.ExposedDataexchangePort)},
-			Volumes:       []string{fmt.Sprintf("dataexchange_%s:/data", member.ID)},
-			Logging:       StandardLogOptions,
+			Ports: []string{
+				fmt.Sprintf("%d:3000", member.ExposedDataexchangePort),
+				fmt.Sprintf("%d:3001", member.ExposedDataexchangeP2PPort),
+			},
+			Volumes: []string{fmt.Sprintf("dataexchange_%s:/data", member.ID)},
+			Logging: StandardLogOptions,
 		}
 		compose.Volumes[fmt.Sprintf("dataexchange_%s", member.ID)] = struct{}{}
 		if s.SandboxEnabled {
@@ -167,7 +174,7 @@ func CreateDockerCompose(s *types.Stack) *DockerComposeConfig {
 				ContainerName: fmt.Sprintf("%s_sandbox_%s", s.Name, member.ID),
 				Ports:         []string{fmt.Sprintf("%d:3001", member.ExposedSandboxPort)},
 				Environment: map[string]interface{}{
-					"FF_ENDPOINT": fmt.Sprintf("http://gdc_core_%d:%d", *member.Index, member.ExposedFireflyPort),
+					"FF_ENDPOINT": fmt.Sprintf("http://gdc_core_%d:5000", *member.Index),
 				},
 			}
 		}

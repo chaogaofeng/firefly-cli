@@ -27,6 +27,8 @@ type Organization struct {
 	ExposedConnectorMetricsPort int          `json:"exposedConnectorMetricsPort,omitempty"`
 	ExposedDatabasePort         int          `json:"exposedPostgresPort,omitempty"`
 	ExposedDataexchangePort     int          `json:"exposedDataexchangePort,omitempty"`
+	ExposedDataexchangeP2PPort  int          `json:"exposedDataexchangeP2PPort,omitempty"`
+	ExposedIPFSP2PPort          int          `json:"exposedIPFSP2PPort,omitempty"`
 	ExposedIPFSApiPort          int          `json:"exposedIPFSApiPort,omitempty"`
 	ExposedIPFSGWPort           int          `json:"exposedIPFSGWPort,omitempty"`
 	ExposedUIPort               int          `json:"exposedUiPort,omitempty"`
