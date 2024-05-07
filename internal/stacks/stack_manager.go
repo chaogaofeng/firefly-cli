@@ -200,7 +200,7 @@ func (s *StackManager) InitStack(options *types.InitOptions) (err error) {
 	}
 	s.Stack.SecretFlowProviders = secretFlowProviders
 
-	if s.Stack.IPFSMode.Equals(types.IPFSModePrivate) {
+	if s.Stack.IPFSMode.Equals(types.IPFSModePrivate) && len(s.Stack.SwarmKey) == 0 {
 		s.Stack.SwarmKey = GenerateSwarmKey()
 	}
 

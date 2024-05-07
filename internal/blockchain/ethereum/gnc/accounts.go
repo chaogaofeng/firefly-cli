@@ -45,6 +45,8 @@ func CreateWalletFile(ctx context.Context, outputDirectory, prefix, password str
 		return nil, err
 	}
 
+	mnemonic = "apology false junior asset sphere puppy upset dirt miracle rice horn spell ring vast wrist crisp snake oak give cement pause swallow barely clever"
+
 	privateKey, err := etherminthd.EthSecp256k1.Derive()(mnemonic, "", "m/44'/118'/0'/0/0")
 	if err != nil {
 		return nil, err

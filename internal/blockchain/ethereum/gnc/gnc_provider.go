@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	bip39 "github.com/cosmos/go-bip39"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum/connector"
 	"github.com/hyperledger/firefly-cli/internal/blockchain/ethereum/connector/ethconnect"
@@ -125,15 +126,15 @@ func (p *GncProvider) FirstTimeSetup() error {
 		return err
 	}
 
-	// Copy the genesis block information
-	if err := docker.CopyFileToVolume(p.ctx, blockchainVolumeName, path.Join(blockchainDir, "chain.yml"), "chain.yml"); err != nil {
-		return err
-	}
-
-	// Initialize the genesis block
-	if err := docker.RunDockerCommand(p.ctx, p.stack.StackDir, "run", "--rm", "-v", fmt.Sprintf("%s:/root/.gnchain", blockchainVolumeName), gnchaindImage, "gnchaind", "chain", "/root/.gnchain/chain.yml"); err != nil {
-		return err
-	}
+	//// Copy the genesis block information
+	//if err := docker.CopyFileToVolume(p.ctx, blockchainVolumeName, path.Join(blockchainDir, "chain.yml"), "chain.yml"); err != nil {
+	//	return err
+	//}
+	//
+	//// Initialize the genesis block
+	//if err := docker.RunDockerCommand(p.ctx, p.stack.StackDir, "run", "--rm", "-v", fmt.Sprintf("%s:/root/.gnchain", blockchainVolumeName), gnchaindImage, "gnchaind", "chain", "/root/.gnchain/chain.yml"); err != nil {
+	//	return err
+	//}
 
 	return nil
 }
@@ -188,6 +189,12 @@ func (p *GncProvider) DeployFireFlyContract() (*types.ContractDeploymentResult, 
 }
 
 func (p *GncProvider) GetDockerServiceDefinitions(bootnodes string) []*docker.ServiceDefinition {
+	mnemonic := ""
+	if len(bootnodes) > 0 {
+		entropy, _ := bip39.NewEntropy(defaultEntropySize)
+		mnemonic, _ = bip39.NewMnemonic(entropy)
+	}
+
 	serviceDefinitions := make([]*docker.ServiceDefinition, 1)
 	serviceDefinitions[0] = &docker.ServiceDefinition{
 		ServiceName: blockchainServiceName,
@@ -199,8 +206,13 @@ func (p *GncProvider) GetDockerServiceDefinitions(bootnodes string) []*docker.Se
 				"GNCHAIND_LOG_LEVEL":            "debug",
 				"GNCHAIND_KEYRING_BACKEND":      "test",
 				"GNCHAIND_P2P_PERSISTENT_PEERS": bootnodes,
+				"RECOVER":                       mnemonic,
 			},
-			Volumes: []string{blockchainServiceName + ":/root/.gnchain"},
+			Command: "sh -c '/wait && /init.sh && /run.sh'",
+			Volumes: []string{
+				fmt.Sprintf("./runtime/blockchain/chain.yml:/root/chain.yml"),
+				blockchainServiceName + ":/root/.gnchain",
+			},
 			Logging: docker.StandardLogOptions,
 			Ports: []string{
 				fmt.Sprintf("%d:26656/tcp", p.stack.ExposedBlockchainP2P),
